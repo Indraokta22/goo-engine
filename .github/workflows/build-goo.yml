@@ -1,7 +1,7 @@
 name: Build Goo Engine (Windows)
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Manual trigger
   push:
     branches: [ main ]
 
@@ -10,42 +10,57 @@ jobs:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repo
+      # 1. Checkout repo with submodules
+      - name: Checkout code
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Install dependencies
+      # 2. Install dependencies
+      - name: Install tools (Chocolatey)
         run: |
           choco install -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
           choco install -y git ninja python --version=3.10.11
-          choco install -y visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --includeOptional"
+          choco install -y wget  # Required for library downloads
+          choco install -y visualstudio2022buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
 
-      - name: Add to PATH
+      # 3. Fix line endings in Makefile (critical for Windows)
+      - name: Fix Makefile formatting
         run: |
-          echo "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
-          echo "C:\Program Files\Git\cmd" >> $env:GITHUB_PATH
-          echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
-
-      - name: Update Blender libraries
-        run: make update
+          # Convert CRLF to LF (Unix line endings)
+          sed -i 's/\r$//' GNUmakefile
+          # Ensure tabs (not spaces) for indentation
+          sed -i 's/^    /\t/' GNUmakefile
         shell: bash
 
+      # 4. Update Blender libraries (skip if already cached)
+      - name: Update libraries
+        run: |
+          if [ ! -d "./lib" ]; then
+            make update
+          else
+            echo "Library directory exists, skipping make update."
+          fi
+        shell: bash
+
+      # 5. Configure and build
       - name: Configure CMake
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Blender
         run: cmake --build build --config Release --target blender
 
-      - name: Package DLLs
+      # 6. Package and upload
+      - name: Package artifacts
         run: |
           mkdir package
           cp build/bin/Release/blender.exe package/
+          # Include required DLLs
           cp "C:/Windows/System32/"{vcomp140.dll,msvcp140.dll,ucrtbase.dll} package/
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4  # Updated to v4
+        
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
           name: goo-engine-windows
           path: package/
