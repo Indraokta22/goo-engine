@@ -1,0 +1,44 @@
+name: Build Goo Engine (Windows)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+      with:
+        submodules: recursive
+        fetch-depth: 0
+
+    - name: Install dependencies (Chocolatey)
+      run: |
+        choco install cmake --installargs 'ADD_CMAKE_TO_PATH=System'
+        choco install git
+        choco install ninja
+        choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --includeOptional"
+
+    - name: Add environment paths
+      run: |
+        echo "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
+        echo "C:\Program Files\Git\bin" >> $env:GITHUB_PATH
+        echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
+
+    - name: Update Blender libraries
+      run: make update
+      shell: bash
+
+    - name: Configure with CMake
+      run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+    - name: Build Blender (Goo Engine)
+      run: cmake --build build --target blender
+
+    - name: Upload blender.exe
+      uses: actions/upload-artifact@v3
+      with:
+        name: goo-engine-windows
+        path: build/bin/Release/blender.exe
