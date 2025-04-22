@@ -20,13 +20,11 @@ jobs:
         choco install git
         choco install ninja
         choco install visualstudio2019buildtools --package-parameters "--add Microsoft.VisualStudio.Workload.VCTools --includeRecommended --includeOptional"
-
     - name: Add environment paths
       run: |
         echo "C:\Program Files\CMake\bin" >> $env:GITHUB_PATH
         echo "C:\Program Files\Git\bin" >> $env:GITHUB_PATH
         echo "C:\ProgramData\chocolatey\bin" >> $env:GITHUB_PATH
-
     - name: Update Blender libraries
       run: make update
       shell: bash
