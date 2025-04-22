@@ -47,7 +47,7 @@ jobs:
           cp "C:/Windows/System32/"{vcomp140.dll,msvcp140.dll,ucrtbase.dll} package/  # MSVC runtime DLLs
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: goo-engine-windows
           path: package/
